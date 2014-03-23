@@ -31,8 +31,8 @@ CTxMemPool mempool;
 unsigned int nTransactionsUpdated = 0;
 
 map<uint256, CBlockIndex*> mapBlockIndex;
-uint256 hashGenesisBlock("0x4d96a915f49d40b1e5c2844d1ee2dccb90013a990ccea12c492d22110489f0c4");
-static CBigNum bnProofOfWorkLimit(~uint256(0) >> 20); // Vertcoin: starting difficulty is 1 / 2^12
+uint256 hashGenesisBlock("0x3ef89eb76af2f7b5b57354df6f869c260bd5dbbd5600d42880754738d4216255");
+static CBigNum bnProofOfWorkLimit(~uint256(0) >> 20); // H2O: starting difficulty is 1 / 2^12
 CBlockIndex* pindexGenesisBlock = NULL;
 int nBestHeight = -1;
 uint256 nBestChainWork = 0;
@@ -65,7 +65,7 @@ map<uint256, set<uint256> > mapOrphanTransactionsByPrev;
 // Constant stuff for coinbase transactions we create:
 CScript COINBASE_FLAGS;
 
-const string strMessageMagic = "Vertcoin Signed Message:\n";
+const string strMessageMagic = "H2O Signed Message:\n";
 
 double dHashesPerSec = 0.0;
 int64 nHPSTimerStart = 0;
@@ -356,7 +356,7 @@ unsigned int LimitOrphanTxSize(unsigned int nMaxOrphans)
 
 bool CTxOut::IsDust() const
 {
-    // Vertcoin: IsDust() detection disabled, allows any valid dust to be relayed.
+    // H2O: IsDust() detection disabled, allows any valid dust to be relayed.
     // The fees imposed on each dust txo is considered sufficient spam deterrant. 
     return false;
 }
@@ -613,7 +613,7 @@ int64 CTransaction::GetMinFee(unsigned int nBlockSize, bool fAllowFree,
             nMinFee = 0;
     }
 
-    // Vertcoin
+    // H2O
     // To limit dust spam, add nBaseFee for each output less than DUST_SOFT_LIMIT
     BOOST_FOREACH(const CTxOut& txout, vout)
         if (txout.nValue < DUST_SOFT_LIMIT)
@@ -1096,18 +1096,32 @@ unsigned char GetNfactor(int64 nTimestamp) {
 
 int64 static GetBlockValue(int nHeight, int64 nFees)
 {
-    int64 nSubsidy = 50 * COIN;
+    int64 nSubsidy = 500000 * COIN;
 
-    // Subsidy is cut in half every 840000 blocks, which will occur approximately every 4 years
-    nSubsidy >>= (nHeight / 840000); // Vertcoin: 840k blocks in ~4 years
-
+    if (nHeight < 6)
+    {
+        nSubsidy = 10000000 * COIN; // CoinDev: IPO Premine of 2.5% (50 Million)
+    } else if (nHeight < 43206)  {
+        nSubsidy = 2000 * COIN; //125% Reward special 
+    } else if (nHeight < 525960) {
+        nSubsidy = 1600 * COIN; // Regular blocks
+    } else if (nHeight < 1051920) {
+        nSubsidy = 800 * COIN;  //First halving (Yes I know, manual halving)
+    } else if (nHeight < 1577880) {
+        nSubsidy = 400 * COIN;
+    } else if (nHeight < 2193840) {
+        nSubsidy = 200 * COIN;    
+    } else {
+        nSubsidy = 100 * COIN;
+    }
+    
     return nSubsidy + nFees;
 }
 
 
 
-static const int64 nTargetTimespan = 3.5 * 24 * 60 * 60; // Vertcoin: 3.5 days
-static const int64 nTargetSpacing = 2.5 * 60; // Vertcoin: 2.5 minutes
+static const int64 nTargetTimespan = 2 * 60; 
+static const int64 nTargetSpacing = 60;
 static const int64 nInterval = nTargetTimespan / nTargetSpacing;
 
 //
@@ -1169,7 +1183,7 @@ unsigned int static GetNextWorkRequired_V1(const CBlockIndex* pindexLast, const 
         return pindexLast->nBits;
     }
 
-    // Vertcoin: This fixes an issue where a 51% attack can change difficulty at will.
+    // H2O: This fixes an issue where a 51% attack can change difficulty at will.
     // Go back the full period unless it's the first retarget after genesis. Code courtesy of Art Forz
     int blockstogoback = nInterval-1;
     if ((pindexLast->nHeight+1) != nInterval)
@@ -1275,7 +1289,7 @@ unsigned int static KimotoGravityWell(const CBlockIndex* pindexLast, const CBloc
 // Using KGW
 unsigned int static GetNextWorkRequired_V2(const CBlockIndex* pindexLast, const CBlockHeader *pblock)
 {
-        static const int64        BlocksTargetSpacing                        = 2.5 * 60; // 2.5 minutes
+        static const int64        BlocksTargetSpacing                        =  60; 
         unsigned int                TimeDaySeconds                                = 60 * 60 * 24;
         int64                                PastSecondsMin                                = TimeDaySeconds * 0.25;
         int64                                PastSecondsMax                                = TimeDaySeconds * 7;
@@ -1290,11 +1304,9 @@ unsigned int static GetNextWorkRequired_V2(const CBlockIndex* pindexLast, const 
 unsigned int static GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHeader *pblock)
 {
         int DiffMode = 1; // legacy diff-mode
-        if (fTestNet) {
-                if (pindexLast->nHeight+1 >= 2116) { DiffMode = 2; } // vertcoin, 100 blocks after first legacy diff adjustment
-        }
-        else {         
-        	if (pindexLast->nHeight+1 >= 26754) { DiffMode = 2; }  //vertcoin, 5 days after 27/01/2014 12:00 UTC
+        if (pindexBest->nHeight > 120)
+        {
+            DiffMode = 2;
         }
         
         if                (DiffMode == 1) { return GetNextWorkRequired_V1(pindexLast, pblock); } //legacy diff mode
@@ -2212,7 +2224,7 @@ bool CBlock::CheckBlock(CValidationState &state, bool fCheckPOW, bool fCheckMerk
     if (vtx.empty() || vtx.size() > MAX_BLOCK_SIZE || ::GetSerializeSize(*this, SER_NETWORK, PROTOCOL_VERSION) > MAX_BLOCK_SIZE)
         return state.DoS(100, error("CheckBlock() : size limits failed"));
 
-    // Vertcoin: Special short-term limits to avoid 10,000 BDB lock limit:
+    // H2O: Special short-term limits to avoid 10,000 BDB lock limit:
     if (GetBlockTime() < 1376568000)  // stop enforcing 15 August 2013 00:00:00
     {
         // Rule is: #unique txids referenced <= 4,500
@@ -2374,7 +2386,7 @@ bool CBlock::AcceptBlock(CValidationState &state, CDiskBlockPos *dbp)
 
 bool CBlockIndex::IsSuperMajority(int minVersion, const CBlockIndex* pstart, unsigned int nRequired, unsigned int nToCheck)
 {
-    // Vertcoin: temporarily disable v2 block lockin until we are ready for v2 transition
+    // H2O: temporarily disable v2 block lockin until we are ready for v2 transition
     return false;
     unsigned int nFound = 0;
     for (unsigned int i = 0; i < nToCheck && nFound < nRequired && pstart != NULL; i++)
@@ -2900,12 +2912,12 @@ bool InitBlockIndex() {
     if (!fReindex) {
 
         // Genesis block
-        const char* pszTimestamp = "01/09/2014 Germany to Help in Disposal of Syrian Chemical Weapons";
+        const char* pszTimestamp = "Enough is ENOUGH! I have HAD IT WITH ALL THESE DOGS MAN!!";
         CTransaction txNew;
         txNew.vin.resize(1);
         txNew.vout.resize(1);
         txNew.vin[0].scriptSig = CScript() << 0 << CBigNum(999) << vector<unsigned char>((const unsigned char*)pszTimestamp, (const unsigned char*)pszTimestamp + strlen(pszTimestamp));
-        txNew.vout[0].nValue = 50 * COIN;
+        txNew.vout[0].nValue = 10000000 * COIN;
         txNew.vout[0].scriptPubKey = CScript();
         
         CBlock block;
@@ -2913,9 +2925,9 @@ bool InitBlockIndex() {
         block.hashPrevBlock = 0;
         block.hashMerkleRoot = block.BuildMerkleTree();
         block.nVersion = 1;
-        block.nBits    = 0x1e0ffff0;
-        block.nNonce = 5749262;
-        block.nTime = 1389311371;
+        block.nBits = 0x1e0ffff0;
+        block.nNonce = 12165409;
+        block.nTime = 1393710970;
         
         if (fTestNet)
         {
@@ -2929,9 +2941,43 @@ bool InitBlockIndex() {
         printf("%s\n", hash.ToString().c_str());
         printf("%s\n", hashGenesisBlock.ToString().c_str());
         printf("%s\n", block.hashMerkleRoot.ToString().c_str());
-        assert(block.hashMerkleRoot == uint256("0x4af38ca0e323c0a5226208a73b7589a52c030f234810cf51e13e3249fc0123e7"));
-       
-        
+        assert(block.hashMerkleRoot == uint256("0x3bf73feb24baad0f24c3bf8cf706a448887650efd593899bf3d82efeac374c54"));
+     
+        /*
+        if (false && block.GetHash() != hashGenesisBlock)
+            {
+                printf("Searching for genesis block...\n");
+                // This will figure out a valid hash and Nonce if you're
+                // creating a different genesis block:
+                uint256 hashTarget = CBigNum().SetCompact(block.nBits).getuint256();
+                uint256 thash;
+                unsigned long int scrypt_scratpad_size_current_block = ((1 << (GetNfactor(block.nTime) + 1)) * 128 ) + 63;
+            
+                char scratchpad[scrypt_scratpad_size_current_block];
+   
+                
+                loop
+                {
+                    scrypt_N_1_1_256_sp_generic(BEGIN(block.nVersion), BEGIN(thash), scratchpad, GetNfactor(block.nTime));
+    
+                    if (thash <= hashTarget)
+                        break;
+                    if ((block.nNonce & 0xFFF) == 0)
+                    {
+                        printf("nonce %08X: hash = %s (target = %s)\n", block.nNonce, thash.ToString().c_str(), hashTarget.ToString().c_str());
+                    }
+                    ++block.nNonce;
+                    if (block.nNonce == 0)
+                    {
+                        printf("NONCE WRAPPED, incrementing time\n");
+                        ++block.nTime;
+                    }
+                }
+                printf("block.nTime = %u \n", block.nTime);
+                printf("block.nNonce = %u \n", block.nNonce);
+                printf("block.GetHash = %s\n", block.GetHash().ToString().c_str());
+            }
+        */
         block.print();
         assert(hash == hashGenesisBlock);
 
@@ -3204,7 +3250,7 @@ bool static AlreadyHave(const CInv& inv)
 // The message start string is designed to be unlikely to occur in normal data.
 // The characters are rarely used upper ASCII, not valid as UTF-8, and produce
 // a large 4-byte int at any alignment.
-unsigned char pchMessageStart[4] = { 0xfa, 0xbf, 0xb5, 0xda }; // Vertcoin: increase each by adding 1 to bitcoin's value.
+unsigned char pchMessageStart[4] = { 0xfa, 0xbf, 0xb5, 0xda }; // H2O: increase each by adding 1 to bitcoin's value.
 
 
 void static ProcessGetData(CNode* pfrom)
@@ -4659,7 +4705,7 @@ bool CheckWork(CBlock* pblock, CWallet& wallet, CReserveKey& reservekey)
         return false;
 
     //// debug print
-    printf("VertcoinMiner:\n");
+    printf("H2OMiner:\n");
     printf("proof-of-work found  \n  hash: %s  \ntarget: %s\n", hash.GetHex().c_str(), hashTarget.GetHex().c_str());
     pblock->print();
     printf("generated %s\n", FormatMoney(pblock->vtx[0].vout[0].nValue).c_str());
@@ -4668,7 +4714,7 @@ bool CheckWork(CBlock* pblock, CWallet& wallet, CReserveKey& reservekey)
     {
         LOCK(cs_main);
         if (pblock->hashPrevBlock != hashBestChain)
-            return error("VertcoinMiner : generated block is stale");
+            return error("H2OMiner : generated block is stale");
 
         // Remove key from key pool
         reservekey.KeepKey();
@@ -4682,7 +4728,7 @@ bool CheckWork(CBlock* pblock, CWallet& wallet, CReserveKey& reservekey)
         // Process this block the same as if we had received it from another node
         CValidationState state;
         if (!ProcessBlock(state, NULL, pblock))
-            return error("VertcoinMiner : ProcessBlock, block not accepted");
+            return error("H2OMiner : ProcessBlock, block not accepted");
     }
 
     return true;
@@ -4690,9 +4736,9 @@ bool CheckWork(CBlock* pblock, CWallet& wallet, CReserveKey& reservekey)
 
 void static VertcoinMiner(CWallet *pwallet)
 {
-    printf("VertcoinMiner started\n");
+    printf("H2OMiner started\n");
     SetThreadPriority(THREAD_PRIORITY_LOWEST);
-    RenameThread("vertcoin-miner");
+    RenameThread("H2O-miner");
 
     // Each thread has its own key and counter
     CReserveKey reservekey(pwallet);
@@ -4714,7 +4760,7 @@ void static VertcoinMiner(CWallet *pwallet)
         CBlock *pblock = &pblocktemplate->block;
         IncrementExtraNonce(pblock, pindexPrev, nExtraNonce);
 
-        printf("Running VertcoinMiner with %"PRIszu" transactions in block (%u bytes)\n", pblock->vtx.size(),
+        printf("Running H2OMiner with %"PRIszu" transactions in block (%u bytes)\n", pblock->vtx.size(),
                ::GetSerializeSize(*pblock, SER_NETWORK, PROTOCOL_VERSION));
 
         //
@@ -4825,7 +4871,7 @@ void static VertcoinMiner(CWallet *pwallet)
     } }
     catch (boost::thread_interrupted)
     {
-        printf("VertcoinMiner terminated\n");
+        printf("H2OMiner terminated\n");
         throw;
     }
 }

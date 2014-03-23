@@ -110,7 +110,7 @@ static std::string Translate(const char* psz)
 static void handleRunawayException(std::exception *e)
 {
     PrintExceptionContinue(e, "Runaway exception");
-    QMessageBox::critical(0, "Runaway exception", BitcoinGUI::tr("A fatal error occurred. Vertcoin can no longer continue safely and will quit.") + QString("\n\n") + QString::fromStdString(strMiscWarning));
+    QMessageBox::critical(0, "Runaway exception", BitcoinGUI::tr("A fatal error occurred. H2O can no longer continue safely and will quit.") + QString("\n\n") + QString::fromStdString(strMiscWarning));
     exit(1);
 }
 
@@ -146,7 +146,7 @@ int main(int argc, char *argv[])
     {
         // This message can not be translated, as translation is not initialized yet
         // (which not yet possible because lang=XX can be overridden in bitcoin.conf in the data directory)
-        QMessageBox::critical(0, "Vertcoin",
+        QMessageBox::critical(0, "H2O",
                               QString("Error: Specified data directory \"%1\" does not exist.").arg(QString::fromStdString(mapArgs["-datadir"])));
         return 1;
     }
@@ -154,12 +154,12 @@ int main(int argc, char *argv[])
 
     // Application identification (must be set before OptionsModel is initialized,
     // as it is used to locate QSettings)
-    QApplication::setOrganizationName("Vertcoin");
-    QApplication::setOrganizationDomain("vertcoin.org");
+    QApplication::setOrganizationName("H2O");
+    QApplication::setOrganizationDomain("H2O.org");
     if(GetBoolArg("-testnet")) // Separate UI settings for testnet
-        QApplication::setApplicationName("Vertcoin-Qt-testnet");
+        QApplication::setApplicationName("H2O-Qt-testnet");
     else
-        QApplication::setApplicationName("Vertcoin-Qt");
+        QApplication::setApplicationName("H2O-Qt");
 
     // ... then GUI settings:
     OptionsModel optionsModel;
@@ -240,7 +240,7 @@ int main(int argc, char *argv[])
 
         QTimer* pollShutdownTimer = new QTimer(guiref);
         QObject::connect(pollShutdownTimer, SIGNAL(timeout()), guiref, SLOT(detectShutdown()));
-        pollShutdownTimer->start(200);
+        pollShutdownTimer->start(500);
 
         if(AppInit2(threadGroup))
         {

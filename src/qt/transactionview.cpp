@@ -56,9 +56,11 @@ TransactionView::TransactionView(QWidget *parent) :
     dateWidget->addItem(tr("Last month"), LastMonth);
     dateWidget->addItem(tr("This year"), ThisYear);
     dateWidget->addItem(tr("Range..."), Range);
+    dateWidget->setStyleSheet("background-color: rgb(255, 255, 255);");
     hlayout->addWidget(dateWidget);
 
     typeWidget = new QComboBox(this);
+    typeWidget->setStyleSheet("background-color: rgb(255, 255, 255);");
 #ifdef Q_OS_MAC
     typeWidget->setFixedWidth(121);
 #else
@@ -77,6 +79,7 @@ TransactionView::TransactionView(QWidget *parent) :
     hlayout->addWidget(typeWidget);
 
     addressWidget = new QLineEdit(this);
+    addressWidget->setStyleSheet("background-color: rgb(255, 255, 255);");
 #if QT_VERSION >= 0x040700
     /* Do not move this to the XML file, Qt before 4.7 will choke on it */
     addressWidget->setPlaceholderText(tr("Enter address or label to search"));
@@ -84,6 +87,7 @@ TransactionView::TransactionView(QWidget *parent) :
     hlayout->addWidget(addressWidget);
 
     amountWidget = new QLineEdit(this);
+    amountWidget->setStyleSheet("background-color: rgb(255, 255, 255);");
 #if QT_VERSION >= 0x040700
     /* Do not move this to the XML file, Qt before 4.7 will choke on it */
     amountWidget->setPlaceholderText(tr("Min amount"));
@@ -106,6 +110,7 @@ TransactionView::TransactionView(QWidget *parent) :
     vlayout->addWidget(view);
     vlayout->setSpacing(0);
     int width = view->verticalScrollBar()->sizeHint().width();
+    view->setStyleSheet("background-color: rgb(255, 255, 255);");
     // Cover scroll bar width with spacing
 #ifdef Q_OS_MAC
     hlayout->addSpacing(width+2);
